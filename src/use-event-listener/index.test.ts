@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react-hooks';
-import useEventListener from './useEventListener';
+import useEventListener from './index';
 
 const mouseMoveEvent = { clientX: 100, clientY: 200 };
 let hackHandler: any;
@@ -33,7 +33,7 @@ describe('useEventListener', () => {
 
   // test.only('`element` is optional (defaults to `window`/`global`)', () => {
   //   const handler = jest.fn();
-  //   const spy = jest.spyOn(global, 'addEventListener' as any);
+  //   const spy = jest.spyOn(globalAny, 'addEventListener');
 
   //   renderHook(() => useEventListener('foo', handler));
   //   expect(spy).toBeCalled();

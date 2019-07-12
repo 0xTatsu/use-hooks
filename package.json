@@ -22,5 +22,9 @@
   "homepage": "https://github.com/0xTatsu/useHooks#readme",
   "dependencies": {
     "react": "^16.8.6"
+  },
+  "devDependencies": {
+    "@testing-library/react-hooks": "^1.1.0",
+    "jest": "^24.8.0"
   }
 }
