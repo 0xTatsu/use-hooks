@@ -1,23 +1,37 @@
 import React from 'react';
-import useEventListener from './useEventListener';
+import useEventListener from 'hooks/use-event-listener';
 
 export const createStorage = (provider: any) => ({
   get(key: string, defaultValue: any) {
-    const json = provider.getItem(key);
-    // eslint-disable-next-line no-nested-ternary
-    return json === null
+    const value = provider.getItem(key);
+    return value === null
       ? typeof defaultValue === 'function'
         ? defaultValue()
         : defaultValue
-      : JSON.parse(json);
+      : JSON.parse(value);
   },
   set(key: string, value: any) {
     provider.setItem(key, JSON.stringify(value));
   },
 });
 
-const globalState: any = {};
-export const createGlobalState = (key: string, thisCallback: any, initialValue: any) => {
+export const createPersistedState = (
+  key: string,
+  provider = window.localStorage,
+) => {
+  if (provider) {
+    const storage = createStorage(provider);
+    return (initialState: any) => usePersistedState(initialState, key, storage);
+  }
+  return React.useState;
+};
+
+const globalState: FieldValue = {};
+export const createGlobalState = (
+  key: string,
+  thisCallback: any,
+  initialValue: any,
+) => {
   if (!globalState[key]) {
     globalState[key] = { callbacks: [], value: initialValue };
   }
@@ -31,7 +45,7 @@ export const createGlobalState = (key: string, thisCallback: any, initialValue: 
       }
     },
     emit(value: any) {
-      if (globalState[key].value !== value {
+      if (globalState[key].value !== value) {
         globalState[key].value = value;
         globalState[key].callbacks.forEach((callback: any) => {
           if (thisCallback !== callback) {
@@ -43,11 +57,14 @@ export const createGlobalState = (key: string, thisCallback: any, initialValue: 
   };
 };
 
-const usePersistedState = (initialState: any, key: string, { get, set }: any) => {
+const usePersistedState = (
+  initialState: any,
+  key: string,
+  { get, set }: any,
+) => {
   const globalState = React.useRef<any>(undefined);
   const [state, setState] = React.useState(() => get(key, initialState));
 
-  // subscribe to `storage` change events
   useEventListener('storage', ({ key: k, newValue }: any) => {
     const newState = JSON.parse(newValue);
     if (k === key && state !== newState) {
@@ -55,7 +72,6 @@ const usePersistedState = (initialState: any, key: string, { get, set }: any) =>
     }
   });
 
-  // only called on mount
   React.useEffect(() => {
     // register a listener that calls `setState` when another instance emits
     globalState.current = createGlobalState(key, setState, initialState);
@@ -63,30 +79,15 @@ const usePersistedState = (initialState: any, key: string, { get, set }: any) =>
     return () => {
       globalState.current.deregister();
     };
-  }, []);
+  }, [initialState, key]);
 
   // Only persist to storage if state changes.
-  React.useEffect(
-    () => {
-      // persist to localStorage
-      set(key, state);
+  React.useEffect(() => {
+    set(key, state);
 
-      // inform all of the other instances in this tab
-      globalState.current.emit(state);
-    },
-    [state]
-  );
+    // inform all of the other instances in this tab
+    globalState.current.emit(state);
+  }, [key, set, state]);
 
   return [state, setState];
-};
-
-export const createPersistedState = (
-  key: string,
-  provider = window.localStorage
-) => {
-  if (provider) {
-    const storage = createStorage(provider);
-    return (initialState: any) => usePersistedState(initialState, key, storage);
-  }
-  return React.useState;
 };
