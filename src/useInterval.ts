@@ -1,28 +1,37 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
+/**
+ * Use setInterval with Hooks in a declarative way.
+ *
+ * @see https://overreacted.io/making-setinterval-declarative-with-react-hooks/
+ */
 export default function useInterval(callback, delay) {
-  const savedCallback = useRef();
+  const intervalRef = useRef<number | null>(null);
+  const savedCallback = useRef(null);
 
-  // Remember the latest callback.
+  // Remember the latest callback:
+  //
+  // Without this, if you change the callback, when setInterval ticks again, it
+  // will still call your old callback.
+  //
+  // If you add `callback` to useEffect's deps, it will work fine but the
+  // interval will be reset.
+
   useEffect(() => {
     savedCallback.current = callback;
   }, [callback]);
 
   // Set up the interval.
   useEffect(() => {
-    function tick() {
-      savedCallback.current();
-    }
-    if (delay !== null) {
-      let id = setInterval(tick, delay);
-      return () => clearInterval(id);
-    }
-  }, [delay]);
-}
+    if (typeof delay !== "number") return;
 
-/*
-  A React component may be mounted for a while and go through many different states, but its render result describes all of them at once.
-  By contrast, setInterval does not describe a process in time — once you set the interval, you can’t change anything about it except clearing it.
-  (setInterval does not “forget”. It will forever reference the old props and state until you replace it — which you can’t do without resetting the time.)
-  This hook let us apply the same declarative approach to setInterval
-*/
+    intervalRef.current = setInterval(() => {
+      savedCallback.current();
+    }, delay);
+
+    return () => clearInterval(intervalRef.current);
+  }, [delay]); // We only wanted to avoid resetting it when the callback changes. But when the delay changes, we want to restart the timer!
+
+  // Returns a ref to the interval ID in case you want to clear it manually:
+  return intervalRef.current;
+}

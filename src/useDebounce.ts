@@ -1,28 +1,33 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useEffect, useState } from "react";
 
-export default function useDebounce<T>(
-  callback: (args: T) => void,
-  delay: number,
-) {
-  const isMounted: { current: boolean } = useRef(true);
-  const timerId: { current: number | undefined } = useRef(undefined);
+function useDebounce<T>(value: T, delay?: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-  useEffect(() => () => { isMounted.current = false }, [] ); // prettier-ignore
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
 
-  const cancel = useCallback(() => {
-    clearTimeout(timerId.current);
-  }, []);
+    return () => {
+      // it doesn't matter whether we should clear first
+      // ...because when value changes, this one will be triggered
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
 
-  const debouncedCallback = useCallback(
-    (args: T) => {
-      clearTimeout(timerId.current);
-      timerId.current = setTimeout(() => {
-        if (isMounted.current) {
-          callback(args);
-        }
-      }, delay);
-    },
-    [callback, delay],
-  );
-  return [debouncedCallback, cancel];
+  return debouncedValue;
 }
+
+export default useDebounce;
+
+/*
+// JS Implementation
+function debounce (fn, delay) {
+  let id;
+  return function (args) { // arrow function will use global scope
+    clearTimeout(id) // need to clear first
+
+    id = setTimeout(() => {
+        fn.call(this, args) // when its a method of an object
+    }, delay)
+  }
+}
+ */
